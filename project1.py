@@ -15,9 +15,35 @@ def connect(path):
     connection.commit()
     return
 
+def check_messages(member):
+    #member is a tuple gets the email from tuple
+    #using this email we search for inbox that is not seen
+    #sets them to seen ('y') UPDATE feature
+    
+    
+    return 0
+
 def login():
-    print('Login or Register: ')
-    input()
+    
+    while (stop == False):
+        print('Menu Options:\n')
+        print('l: Login\n')
+        print('r: Register\n')
+        print('q: Quit\n')
+        selection = input()
+        if (selection == 'q'):
+            return 0
+        elif (selection == 'l'):
+            #another while loop asking for login info like pw and username
+            #If the selected user is valid then stop the while loop
+            user = "yes"
+        elif (selection == 'r'):
+            #Another while loop asking for register info like pw and username
+            #Pastes data to the members table (Insert Into)
+            #MAKE SURE TO CHECK IF EMAIL GIVEN IS UNIQUE
+            user = "yes"
+        else:
+            print("Syntax error\n")
     return 0
 
 def add_carnumber():
@@ -138,7 +164,7 @@ def offer_ride(driver):
 def ride_menu():
     stop = False
     while (stop == False):
-        print('Ride Menu:\ns: Stop\no: Offer rides\n')
+        print('Ride Menu:\ns: Stop program\no: Offer rides\n')
         value = input()
         if (value == 's'):
             stop = True
@@ -151,7 +177,7 @@ def ride_menu():
 
 def main():
     connect('./test.db')
-    ride_menu()
-    #login()
+    login()
+    #ride_menu()
 
 main()# Project-1

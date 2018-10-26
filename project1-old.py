@@ -16,7 +16,9 @@ def connect(path):
     return
 
 def login():
-    print('Login or Register: ')
+    print('Menu Options:\n')
+    print('l: Login\n')
+    print()
     input()
     return 0
 
