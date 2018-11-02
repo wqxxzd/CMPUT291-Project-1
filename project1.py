@@ -79,8 +79,9 @@ def Already_Existing(list1, value1, index1):
 		if (list1[i][index1] == value1):
 			return True
 	return False
-	
+
 def Search_For_Rides(user):
+	#User is the email
 	global connection, cursor    
     
 	thelist = []
@@ -160,6 +161,7 @@ def main():
 	print(sys.argv[1])
 	connect(sys.argv[1])
 	#login()
+	#Takes in test email as parameter
 	Search_For_Rides(testemail)
 
 main()
