@@ -7,7 +7,6 @@ connection = None
 cursor = None
 
 
-
 def connect(path):
     global connection, cursor
 
@@ -543,6 +542,171 @@ def ride_menu(email):
     return 0
 
 
+def bookings_init(email):
+    global connection, cursor
+    stop = False
+    while (stop == False):
+        print('--------------------------------------------------')
+        print('|         [Book members/cancel bookings]         |')
+        print('|                                                |')
+        print('|              View/Cancel Bookings: v           |')
+        print('|              Book members: b                   |')
+        print('|              Stop and go back: s               |')
+        print('--------------------------------------------------')        
+        value = input('Please select: ')
+        if (value.lower() == 's'):
+            stop = True
+        elif (value.lower() == 'v'):
+            booking(email,"v")
+        elif (value.lower() == 'b'):
+            booking(email,"b")
+        else:
+            print("Syntax error\n")
+    print('Manage Bookings menu stopped\n')
+    connection.commit()
+    return 0
+
+def booking(email,option):
+    global connection, cursor
+
+    if option == "v":
+        booking_list = booking_view(email)
+        stop = False
+        while stop == False:
+            if len(booking_list) == 0:
+                print("\n")
+                return
+            key = input('Enter \"s\" to go back OR enter the entry# to cancel booking: ')
+            print('\n')
+            if (key.lower() == 's'):
+                return
+            else:
+                try:
+                    if (int(key) <= len(booking_list) and int(key) >= 0):
+                        cursor.execute('DELETE FROM bookings WHERE bno == ?;', (booking_list[int(key)-1][0],))
+
+                        cursor.execute('''SELECT datetime('now', 'localtime');''')
+                        time = cursor.fetchall()
+                        content = input('Please enter the reason for the cancellation that will be sent to the user: ')
+                        data = (booking_list[int(key)-1][1], time[0][0], email, content, booking_list[int(key)-1][6], 'n')
+                        cursor.execute('INSERT INTO inbox VALUES (?,?,?,?,?,?);',data)
+
+                        connection.commit()
+
+                        print("\n")
+                        booking_list = booking_view(email)
+
+                except ValueError:
+                    print("Syntax error\n")
+
+    if option == "b":
+        cursor.execute("SELECT rides.rno, rides.seats-bookings.seats, rides.price, rides.src, rides.dst FROM rides, bookings \
+            WHERE rides.driver ==:email AND bookings.rno == rides.rno;", {"email":email})
+
+        rides = cursor.fetchall()
+        #print(rides)
+        if len(rides) == 0:
+            print("No listing found.")
+            return
+        else:
+            stop = False
+            while stop != True:
+                selection = list_scrolling_booking(rides,"ride to add booking")
+                if selection == "s":
+                    return
+                elif (selection != None):
+                    stop = True
+                    print("Selected entry# %d: " % (selection+1))
+                    mEmail = input("Enter email: ")
+
+                    mSeats = input("The number of seats booked: ")
+                    mSeats = int(mSeats)
+
+                    mCost = input("the cost per seat: ")
+                    mCost = int(mCost)
+
+                    mPickup = input("pickup code: ")
+                    mDropoff = input("Drop off code: ")
+
+                    cursor.execute("SELECT bookings.bno FROM bookings;")
+                    allbno = cursor.fetchall()
+                    bnoList = []
+                    for bno in allbno:
+                        bnoList.append(bno[0])
+                    bnoList.append(1000000)
+                    try:
+                        mBNO = next(i for i, bno in enumerate(bnoList, 1) if i != bno)
+                    except StopIteration:
+                        pass
+
+                    data = (mBNO, mEmail, selection+1, mCost, mSeats, mPickup, mDropoff)
+                    cursor.execute('INSERT INTO bookings VALUES (?,?,?,?,?,?,?);',data)
+
+                    cursor.execute('''SELECT datetime('now', 'localtime');''')
+                    time = cursor.fetchall()
+                    content = "You have been booked (%d) by rno (%d)" % (mBNO, (selection+1))
+                    data = (mEmail, time[0][0], email, content, selection+1, 'n')
+                    cursor.execute('INSERT INTO inbox VALUES (?,?,?,?,?,?);',data)
+                    connection.commit()
+                    print("Message sent.")
+                    return
+    
+def list_scrolling_booking(thelist, type_name):
+    global connection, cursor
+    selected = 0
+    v = 0
+    if (len(thelist) == 0):
+        return None
+    print("RNO,\tSeats,\tPrice,\tSrc,\tDst")
+    while (selected == 0):
+        for x in range(v, v+5):
+            if (x < len(thelist)): 
+                print(str(x+1) + ".) " + str(thelist[x]))                
+        print("Input number to select "+type_name+" or input \"s\" to go back to previous menu: ", end="")
+        if (v+5 < len(thelist)):
+            print("f: Forward")
+        if (v != 0):
+            print("p: Previous")
+        selection = input()
+        if (selection.lower() == 'f') and (v+5 < len(thelist)):
+            v = v + 5
+        elif (selection.lower() == 'p') and (v != 0):
+            v = v - 5
+        elif (selection.lower() == 's'):
+            return "s"
+        else:
+            try:
+                val = int(selection)
+                if (val <= len(thelist)):
+                    selected = val-1
+                    return selected
+                else:
+                    print("Invalid selection\n")
+            except ValueError:
+                print("Syntax error\n")      
+    return None
+
+def booking_view(email):
+    global connection, cursor
+
+    cursor.execute("SELECT bookings.bno, bookings.email, bookings.seats, ifnull(bookings.cost,rides.price), ifnull(bookings.pickup,rides.src), ifnull(bookings.dropoff,rides.dst), rides.rno FROM rides, bookings WHERE rides.driver ==:email AND bookings.rno == rides.rno;", {"email":email})
+    booking_list = cursor.fetchall()
+
+    if len(booking_list) != 0:
+        for i, booking in enumerate(booking_list, 1):
+            print(str(i) + ".) " + "(" + str(booking[0]), end=" , ")
+            print(booking[1], end=" , ")
+            print(booking[2], end=" , ")
+            print(booking[3], end=" , ")
+            print(booking[4], end=" , ")
+            print(booking[5]+")")
+
+        print('\n')
+    else:
+        print("No listing found.")
+
+    return (booking_list)
+
 
 def main():
     connect('./test.db')
@@ -556,7 +720,7 @@ def main():
         elif(key.lower() == 's'):
             print('Search for ridese not finished yet')
         elif(key.lower() == 'b'):
-            print('Book members or cancel bookings not finished yet')
+            bookings_init(email)
         elif(key.lower() == 'p'): 
             PostRideRequests(email)
         elif(key.lower() == 'a'): 
